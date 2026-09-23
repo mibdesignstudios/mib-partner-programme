@@ -62,6 +62,7 @@ section{display:flex;flex-direction:column;gap:16px}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 1rem var(--body);padding:13px 20px;border-radius:10px;border:0;cursor:pointer;text-decoration:none}
 .btn-wa{background:var(--wa);color:#fff}
+.btn-wab{background:#0F5C4A;color:#fff}
 .btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
 .btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 
@@ -215,7 +216,7 @@ html{scroll-behavior:smooth}
         <div><p class="label">If your client's project is</p><p class="val" id="calcVal">₹20 lakh</p></div>
         <div style="text-align:right"><p class="label">you earn</p><output id="calcOut" for="calcRange">₹65,000</output></div>
       </div>
-      <input type="range" id="calcRange" min="3" max="90" step="0.5" value="20" aria-label="Project value in lakh rupees">
+      <input type="range" id="calcRange" min="8" max="90" step="0.5" value="20" aria-label="Project value in lakh rupees">
     </div>
   </section>
 
@@ -330,10 +331,11 @@ html{scroll-behavior:smooth}
       <label class="fl" for="notes">Anything else<textarea id="notes" name="notes" placeholder="Best time to call, client's style, full home or specific rooms…"></textarea></label>
       <pre id="preview" aria-label="Message preview"></pre>
       <div class="actions">
-        <button class="btn btn-wa" type="submit">Send on WhatsApp</button>
+        <button class="btn btn-wa" type="submit" data-app="wa">Send on WhatsApp</button>
+        <button class="btn btn-wab" type="submit" data-app="wab">Send on WhatsApp Business</button>
         <button class="btn btn-ghost" type="button" id="copyBtn">Copy message</button>
       </div>
-      <p class="msg" id="formMsg">WhatsApp opens with this message ready. If it doesn't open, copy the message and send it to <span id="waShown"></span>.</p>
+      <p class="msg" id="formMsg">Use the button for the WhatsApp app you have. It opens with this message ready. If it doesn't open, copy the message and send it to <span id="waShown"></span>.</p>
     </form>
   </section>
 
@@ -345,7 +347,7 @@ html{scroll-behavior:smooth}
       <li>Payment in two parts: 50% within 7 days of the client's first milestone payment, and 50% within 7 days of handover and final payment.</li>
       <li>A lead is registered to the first partner who shares the client's name and number. Registration is valid for 90 days from the date shared. If the client is already in touch with us, we'll tell you within 48 hours.</li>
       <li>No fee is payable if the client doesn't sign, or cancels before the first milestone payment.</li>
-      <li>Projects under ₹5 lakh are outside the programme. For projects above ₹50 lakh, the fee is 3% of project value, capped at ₹2.5 lakh.</li>
+      <li>Projects under ₹10 lakh are outside the programme, and no referral fee is paid on them. For projects above ₹50 lakh, the fee is 3% of project value, capped at ₹2.5 lakh.</li>
       <li>Planning &amp; visualisation-only projects earn 10% of the design fee (minimum ₹5,000), paid within 7 days of the client's design-fee payment. If the client later hires us to execute, the slab fee is paid as well.</li>
       <li>Fees are paid by bank transfer, with TDS deducted as required by law.</li>
       <li>Terms may be updated with 30 days' notice. Leads already registered are always paid on the terms in force when they were shared.</li>
@@ -363,7 +365,6 @@ html{scroll-behavior:smooth}
 /* ===== EDIT HERE ===== */
 const STUDIO_WA = "917977160165"; // your WhatsApp number with country code, digits only, e.g. "919876543210"
 const SLABS = [ // [from lakh, to lakh, fee in ₹]
-  [5, 10, 25000],
   [10, 15, 50000],
   [15, 22, 65000],
   [22, 30, 85000],
@@ -483,10 +484,19 @@ form.addEventListener("submit", e => {
     document.getElementById(missing[0]).focus();
     return;
   }
-  const url = "https://wa.me/" + (STUDIO_WA || "") + "?text=" + encodeURIComponent(buildMsg());
-  const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener";
-  document.body.appendChild(a); a.click(); a.remove();
-  msgEl.textContent = "Opening WhatsApp with your message. If nothing opened, use Copy message and paste it in WhatsApp.";
+  const app = (e.submitter && e.submitter.dataset.app) || "wa";
+  const text = encodeURIComponent(buildMsg());
+  const web = "https://wa.me/" + (STUDIO_WA || "") + "?text=" + text;
+  let url = web;
+  if (/Android/i.test(navigator.userAgent)){
+    const pkg = app === "wab" ? "com.whatsapp.w4b" : "com.whatsapp";
+    url = "intent://send?phone=" + (STUDIO_WA || "") + "&text=" + text + "#Intent;scheme=whatsapp;package=" + pkg + ";S.browser_fallback_url=" + encodeURIComponent(web) + ";end";
+    location.href = url;
+  } else {
+    const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener";
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  msgEl.textContent = "Opening " + (app === "wab" ? "WhatsApp Business" : "WhatsApp") + " with your message. If nothing opened, use Copy message and paste it in WhatsApp.";
 });
 document.getElementById("copyBtn").addEventListener("click", () => {
   const t = buildMsg();
